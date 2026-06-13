@@ -2,7 +2,7 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useScroll } from "@react-three/drei";
-import { SKY_VERT, SKY_FRAG, CLOUD_VERT, CLOUD_FRAG } from "./shaders";
+import { SKY_VERT, SKY_FRAG, CLOUD_VERT, CLOUD_FRAG, withOctaves } from "./shaders";
 import { smoothstep } from "../lib/math";
 
 /** Distant nebula billboards the dragon drifts past during the journey. */
@@ -24,10 +24,11 @@ const CLOUDS: CloudDef[] = [
   { pos: [-30, -50, -90], scale: 140, color: "#3a2266", seed: 2.9, range: [0.6, 1.0], max: 0.4 },
 ];
 
-function Cloud({ def }: { def: CloudDef }) {
+function Cloud({ def, octaves }: { def: CloudDef; octaves: number }) {
   const mesh = useRef<THREE.Mesh>(null);
   const scroll = useScroll();
   const { camera } = useThree();
+  const frag = useMemo(() => withOctaves(CLOUD_FRAG, octaves), [octaves]);
   const uniforms = useMemo(
     () => ({
       uTime: { value: Math.random() * 100 },
@@ -58,7 +59,7 @@ function Cloud({ def }: { def: CloudDef }) {
       <planeGeometry args={[def.scale, def.scale]} />
       <shaderMaterial
         vertexShader={CLOUD_VERT}
-        fragmentShader={CLOUD_FRAG}
+        fragmentShader={frag}
         uniforms={uniforms}
         transparent
         depthWrite={false}
@@ -69,8 +70,9 @@ function Cloud({ def }: { def: CloudDef }) {
   );
 }
 
-function SkyDome() {
+function SkyDome({ low, octaves }: { low: boolean; octaves: number }) {
   const scroll = useScroll();
+  const frag = useMemo(() => withOctaves(SKY_FRAG, octaves), [octaves]);
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
@@ -93,10 +95,10 @@ function SkyDome() {
 
   return (
     <mesh frustumCulled={false}>
-      <sphereGeometry args={[300, 48, 48]} />
+      <sphereGeometry args={[300, low ? 24 : 48, low ? 16 : 48]} />
       <shaderMaterial
         vertexShader={SKY_VERT}
-        fragmentShader={SKY_FRAG}
+        fragmentShader={frag}
         uniforms={uniforms}
         side={THREE.BackSide}
         depthWrite={false}
@@ -105,12 +107,21 @@ function SkyDome() {
   );
 }
 
-export default function Nebula() {
+export default function Nebula({
+  low = false,
+  octaves = 5,
+  clouds,
+}: {
+  low?: boolean;
+  octaves?: number;
+  clouds?: number;
+}) {
+  const list = clouds ? CLOUDS.slice(0, clouds) : CLOUDS;
   return (
     <>
-      <SkyDome />
-      {CLOUDS.map((def, i) => (
-        <Cloud key={i} def={def} />
+      <SkyDome low={low} octaves={octaves} />
+      {list.map((def, i) => (
+        <Cloud key={i} def={def} octaves={octaves} />
       ))}
     </>
   );

@@ -51,10 +51,13 @@ float snoise(vec3 v){
   m = m * m;
   return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 }
+#ifndef FBM_OCTAVES
+#define FBM_OCTAVES 5
+#endif
 float fbm(vec3 p){
   float f = 0.0;
   float a = 0.5;
-  for(int i=0;i<5;i++){
+  for(int i=0;i<FBM_OCTAVES;i++){
     f += a * snoise(p);
     p *= 2.02;
     a *= 0.5;
@@ -62,6 +65,10 @@ float fbm(vec3 p){
   return f;
 }
 `;
+
+/** Prepend an octave count to a shader source (fewer octaves = cheaper fbm). */
+export const withOctaves = (src: string, octaves: number) =>
+  `#define FBM_OCTAVES ${octaves}\n${src}`;
 
 /* ───────────────────────────── DRAGON ───────────────────────────── */
 

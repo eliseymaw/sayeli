@@ -595,6 +595,13 @@ canvas {
   .panel { padding: 14vh 7vw; }
 }
 
+/* On touch / small devices, drop the animated film grain (a constant
+   full-screen repaint) and lighten the vignette blend to save the GPU. */
+@media (max-width: 820px), (hover: none) and (pointer: coarse) {
+  .grain { display: none; }
+  .vignette { mix-blend-mode: normal; opacity: 0.9; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .grain, .scroll-hint .rail::after { animation: none; }
   html { scroll-behavior: auto; }
