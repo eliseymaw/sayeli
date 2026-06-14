@@ -12,8 +12,15 @@ export default function Chrome() {
 
   if (!entered) return null;
 
+  const current = CHAPTERS[Math.min(chapter, CHAPTERS.length - 1)];
+
   return (
     <div className="chrome">
+      {/* Slim scroll-progress bar (primary orientation cue on mobile) */}
+      <div className="scrollbar" aria-hidden>
+        <i style={{ transform: `scaleX(${offset})` }} />
+      </div>
+
       <motion.div
         className="brandmark"
         initial={{ opacity: 0, y: -10 }}
@@ -22,6 +29,12 @@ export default function Chrome() {
       >
         SAY<span>E</span>LI
       </motion.div>
+
+      {/* Current-chapter label — shown on mobile where the rail is hidden */}
+      <div className="chapter-indicator">
+        <span className="num">{current.numeral}</span>
+        <span className="ttl">{current.title}</span>
+      </div>
 
       <motion.div
         className="hud"

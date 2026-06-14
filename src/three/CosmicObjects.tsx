@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useScroll } from "@react-three/drei";
 import { CONSTELLATIONS, ARTIFACTS } from "../data/portfolio";
 import { DISK_VERT, DISK_FRAG } from "./shaders";
-import { smoothstep } from "../lib/math";
+import { smoothstep, smootherstep } from "../lib/math";
 
 /* ───── shared soft radial glow sprite texture ───── */
 function makeGlow(): THREE.Texture {
@@ -218,6 +218,7 @@ function BlackHole({ glow }: { glow: THREE.Texture }) {
   const group = useRef<THREE.Group>(null);
   const disk = useRef<THREE.Mesh>(null);
   const halo = useRef<THREE.Sprite>(null);
+  const horizon = useRef<THREE.Mesh>(null);
   const diskUniforms = useMemo(
     () => ({ uTime: { value: 0 }, uOpacity: { value: 0 } }),
     [],
@@ -226,24 +227,36 @@ function BlackHole({ glow }: { glow: THREE.Texture }) {
   useFrame((_, delta) => {
     const o = scroll.offset;
     diskUniforms.uTime.value += Math.min(delta, 0.05);
+
+    // Gentle, wide easing window so it drifts into view rather than popping.
     const vis =
-      smoothstep(0.4, 0.47, o) * (1 - smoothstep(0.58, 0.66, o));
+      smootherstep(0.36, 0.52, o) * (1 - smootherstep(0.6, 0.72, o));
+
     diskUniforms.uOpacity.value = vis;
+
+    if (group.current) {
+      group.current.visible = vis > 0.001;
+      // Grow in as it approaches — emergence instead of a hard cut.
+      group.current.scale.setScalar(0.55 + 0.45 * vis);
+    }
+    // Fade the event horizon itself so the dark sphere doesn't appear all at once.
+    if (horizon.current) {
+      (horizon.current.material as THREE.MeshBasicMaterial).opacity = vis;
+    }
     if (disk.current) disk.current.rotation.z += delta * 0.15;
     if (halo.current) {
-      const sc = 26 * (0.6 + 0.4 * vis);
+      const sc = 26 * (0.7 + 0.3 * vis);
       halo.current.scale.set(sc, sc, sc);
       (halo.current.material as THREE.SpriteMaterial).opacity = vis * 0.5;
     }
-    if (group.current) group.current.visible = vis > 0.001;
   });
 
   return (
     <group ref={group} position={[-16, 12, -28]} rotation={[0.5, -0.4, 0.2]}>
-      {/* event horizon */}
-      <mesh>
+      {/* event horizon — fades in via opacity */}
+      <mesh ref={horizon}>
         <sphereGeometry args={[3.1, 32, 32]} />
-        <meshBasicMaterial color={"#000000"} />
+        <meshBasicMaterial color={"#000000"} transparent opacity={0} depthWrite={false} />
       </mesh>
       {/* accretion disk */}
       <mesh ref={disk} rotation={[Math.PI / 2.1, 0, 0]}>

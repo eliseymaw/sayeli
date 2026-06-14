@@ -9,8 +9,19 @@ import { smoothstep } from "../lib/math";
 
 export default function Logo({ count = 5000 }: { count?: number }) {
   const scroll = useScroll();
-  const { gl } = useThree();
+  const { gl, size } = useThree();
   const matRef = useRef<THREE.ShaderMaterial>(null);
+
+  // Fit the 38-unit-wide wordmark to the viewport so it's never clipped on
+  // narrow / portrait screens. Based on the finale camera framing (the only
+  // moment the logo is visible): ~37 units away, ~56° vertical fov.
+  const fitScale = useMemo(() => {
+    const aspect = size.width / Math.max(1, size.height);
+    const visH = 2 * 37 * Math.tan((56 * Math.PI) / 180 / 2);
+    const visW = visH * aspect;
+    const target = visW * 0.82; // leave margin (fov is a touch tighter mid-reveal)
+    return Math.max(0.3, Math.min(1, target / 38));
+  }, [size.width, size.height]);
 
   const geometry = useMemo(() => {
     const target = sampleText(BRAND.name, count, { worldWidth: 38, weight: 500, spacing: 0.34 });
@@ -48,11 +59,16 @@ export default function Logo({ count = 5000 }: { count?: number }) {
 
   useFrame((_, delta) => {
     uniforms.uTime.value += Math.min(delta, 0.05);
-    uniforms.uForm.value = smoothstep(0.95, 1.0, scroll.offset);
+    uniforms.uForm.value = smoothstep(0.93, 1.0, scroll.offset);
   });
 
   return (
-    <points geometry={geometry} position={[0, 1.5, 7]} frustumCulled={false}>
+    <points
+      geometry={geometry}
+      position={[0, 1.5, 7]}
+      scale={fitScale}
+      frustumCulled={false}
+    >
       <shaderMaterial
         ref={matRef}
         vertexShader={LOGO_VERT}
